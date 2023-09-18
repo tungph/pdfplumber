@@ -54,8 +54,10 @@ def try_decode_bytes(obj):
 
 
 serializers = {
-    Decimal: lambda obj: float(obj.quantize(Decimal(".0001"), rounding=ROUND_HALF_UP)),
-    list: lambda obj: list(serialize(x) for x in obj),
+    Decimal: lambda obj: float(
+        obj.quantize(Decimal(".0001"), rounding=ROUND_HALF_UP)
+    ),
+    list: lambda obj: [serialize(x) for x in obj],
     tuple: lambda obj: tuple(serialize(x) for x in obj),
     dict: lambda obj: {k: serialize(v) for k, v in obj.items()},
     PDFStream: lambda obj: {"rawdata": to_b64(obj.rawdata)},
@@ -77,12 +79,7 @@ def serialize(obj):
 
     # Use one of the custom converters above, if possible
     fn = serializers.get(t)
-    if fn is not None:
-        return fn(obj)
-
-    # Otherwise, just use the string-representation
-    else:
-        return str(obj)
+    return fn(obj) if fn is not None else str(obj)
 
 
 def to_json(container, stream=None, types=DEFAULT_TYPES, indent=None):
@@ -98,7 +95,7 @@ def to_json(container, stream=None, types=DEFAULT_TYPES, indent=None):
             "height": page.height,
         }
         for t in types:
-            d[t + "s"] = getattr(page, t + "s")
+            d[f"{t}s"] = getattr(page, f"{t}s")
         return d
 
     if hasattr(container, "pages"):
@@ -129,7 +126,7 @@ def to_csv(container, stream=None, types=DEFAULT_TYPES):
     # Determine set of fields for all objects
     fields = set()
     for t in types:
-        new_objs = getattr(container, t + "s")
+        new_objs = getattr(container, f"{t}s")
         if len(new_objs):
             objs += new_objs
             new_keys = [k for k, v in new_objs[0].items() if type(v) is not dict]

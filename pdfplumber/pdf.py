@@ -34,7 +34,7 @@ class PDF(Container):
         self.rsrcmgr = PDFResourceManager()
         self.metadata = {}
         for info in self.doc.info:
-            self.metadata.update(info)
+            self.metadata |= info
         for k, v in self.metadata.items():
             try:
                 self.metadata[k] = resolve_and_decode(v)
@@ -51,13 +51,12 @@ class PDF(Container):
 
     @classmethod
     def open(cls, path_or_fp, **kwargs):
-        if isinstance(path_or_fp, (str, pathlib.Path)):
-            fp = open(path_or_fp, "rb")
-            inst = cls(fp, **kwargs)
-            inst.close_file = fp.close
-            return inst
-        else:
+        if not isinstance(path_or_fp, (str, pathlib.Path)):
             return cls(path_or_fp, **kwargs)
+        fp = open(path_or_fp, "rb")
+        inst = cls(fp, **kwargs)
+        inst.close_file = fp.close
+        return inst
 
     @property
     def pages(self):

@@ -13,7 +13,7 @@ def _open(subpath):
     return open(path, encoding="utf-8")
 
 
-with _open(NAME + "/_version.py") as f:
+with _open(f"{NAME}/_version.py") as f:
     exec(f.read(), {}, version_ns)
 
 with _open("requirements.txt") as f:

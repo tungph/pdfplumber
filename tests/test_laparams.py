@@ -12,8 +12,8 @@ HERE = os.path.abspath(os.path.dirname(__file__))
 
 class Test(unittest.TestCase):
     @classmethod
-    def setup_class(self):
-        self.path = os.path.join(HERE, "pdfs/issue-13-151201DSP-Fond-581-90D.pdf")
+    def setup_class(cls):
+        cls.path = os.path.join(HERE, "pdfs/issue-13-151201DSP-Fond-581-90D.pdf")
 
     def test_without_laparams(self):
         with pdfplumber.open(self.path, laparams=None) as pdf:

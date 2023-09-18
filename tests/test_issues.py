@@ -78,7 +78,7 @@ class Test(unittest.TestCase):
         curves = p0.objects["curve"]
         rects = filter_rects(p0.objects["rect"])
 
-        n_checked = sum([determine_if_checked(rect, curves) for rect in rects])
+        n_checked = sum(determine_if_checked(rect, curves) for rect in rects)
 
         assert n_checked == 5
         pdf.close()
@@ -187,5 +187,5 @@ class Test(unittest.TestCase):
         """
         path = os.path.join(HERE, "pdfs/nics-background-checks-2015-11.pdf")
         with pdfplumber.open(path) as pdf:
-            chars = (char for char in pdf.chars)
+            chars = iter(pdf.chars)
             pdfplumber.utils.extract_text(chars)

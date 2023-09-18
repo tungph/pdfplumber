@@ -7,11 +7,10 @@ import sys
 
 
 def parse_page_spec(p_str):
-    if "-" in p_str:
-        start, end = map(int, p_str.split("-"))
-        return range(start, end + 1)
-    else:
+    if "-" not in p_str:
         return [int(p_str)]
+    start, end = map(int, p_str.split("-"))
+    return range(start, end + 1)
 
 
 def parse_args(args_raw):

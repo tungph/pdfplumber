@@ -40,15 +40,11 @@ def make_cluster_dict(values, tolerance):
         [(val, i) for val in value_cluster] for i, value_cluster in enumerate(clusters)
     ]
 
-    cluster_dict = dict(itertools.chain(*nested_tuples))
-    return cluster_dict
+    return dict(itertools.chain(*nested_tuples))
 
 
 def cluster_objects(objs, attr, tolerance):
-    if isinstance(attr, (str, int)):
-        attr_getter = itemgetter(attr)
-    else:
-        attr_getter = attr
+    attr_getter = itemgetter(attr) if isinstance(attr, (str, int)) else attr
     objs = to_list(objs)
     values = map(attr_getter, objs)
     cluster_dict = make_cluster_dict(values, tolerance)
@@ -61,9 +57,7 @@ def cluster_objects(objs, attr, tolerance):
 
     grouped = itertools.groupby(cluster_tuples, key=get_1)
 
-    clusters = [list(map(get_0, v)) for k, v in grouped]
-
-    return clusters
+    return [list(map(get_0, v)) for k, v in grouped]
 
 
 def decode_text(s):
@@ -73,9 +67,8 @@ def decode_text(s):
     """
     if type(s) == bytes and s.startswith(b"\xfe\xff"):
         return str(s[2:], "utf-16be", "ignore")
-    else:
-        ords = (ord(c) if type(c) == str else c for c in s)
-        return "".join(PDFDocEncoding[o] for o in ords)
+    ords = (ord(c) if type(c) == str else c for c in s)
+    return "".join(PDFDocEncoding[o] for o in ords)
 
 
 def resolve_and_decode(obj):
@@ -104,20 +97,14 @@ def decode_psl_list(_list):
 
 
 def resolve(x):
-    if type(x) == PDFObjRef:
-        return x.resolve()
-    else:
-        return x
+    return x.resolve() if type(x) == PDFObjRef else x
 
 
 def get_dict_type(d):
     if type(d) is not dict:
         return None
     t = d.get("Type")
-    if type(t) is PSLiteral:
-        return decode_text(t.name)
-    else:
-        return t
+    return decode_text(t.name) if type(t) is PSLiteral else t
 
 
 def resolve_all(x):
@@ -129,18 +116,12 @@ def resolve_all(x):
         resolved = x.resolve()
 
         # Avoid infinite recursion
-        if get_dict_type(resolved) == "Page":
-            return x
-
-        return resolve_all(resolved)
+        return x if get_dict_type(resolved) == "Page" else resolve_all(resolved)
     elif t in (list, tuple):
         return t(resolve_all(v) for v in x)
     elif t == dict:
-        if get_dict_type(x) == "Annot":
-            exceptions = ["Parent"]
-        else:
-            exceptions = []
-        return dict((k, v if k in exceptions else resolve_all(v)) for k, v in x.items())
+        exceptions = ["Parent"] if get_dict_type(x) == "Annot" else []
+        return {k: v if k in exceptions else resolve_all(v) for k, v in x.items()}
     else:
         return x
 
@@ -359,8 +340,7 @@ class WordExtractor:
 
 
 def extract_words(chars, **kwargs):
-    settings = dict(DEFAULT_WORD_EXTRACTION_SETTINGS)
-    settings.update(kwargs)
+    settings = dict(DEFAULT_WORD_EXTRACTION_SETTINGS) | kwargs
     return WordExtractor(**settings).extract(chars)
 
 
@@ -377,8 +357,7 @@ def extract_text(
 
     lines = (collate_line(line_chars, x_tolerance) for line_chars in doctop_clusters)
 
-    coll = "\n".join(lines)
-    return coll
+    return "\n".join(lines)
 
 
 collate_chars = extract_text
@@ -386,7 +365,7 @@ collate_chars = extract_text
 
 def filter_objects(objs, fn):
     if isinstance(objs, dict):
-        return dict((k, filter_objects(v, fn)) for k, v in objs.items())
+        return {k: filter_objects(v, fn) for k, v in objs.items()}
 
     initial_type = type(objs)
     objs = to_list(objs)
@@ -430,7 +409,7 @@ def clip_obj(obj, bbox):
     for attr in ["x0", "top", "x1", "bottom"]:
         copy[attr] = dims[attr]
 
-    if dims["top"] != obj["bottom"] or dims["top"] != obj["bottom"]:
+    if dims["top"] != obj["bottom"]:
         diff = dims["top"] - obj["top"]
         copy["doctop"] = obj["doctop"] + diff
 
@@ -457,7 +436,7 @@ def within_bbox(objs, bbox):
     Filters objs to only those fully within the bbox
     """
     if isinstance(objs, dict):
-        return dict((k, within_bbox(v, bbox)) for k, v in objs.items())
+        return {k: within_bbox(v, bbox) for k, v in objs.items()}
 
     initial_type = type(objs)
     objs = to_list(objs)
@@ -475,7 +454,7 @@ def crop_to_bbox(objs, bbox):
     and crops the extent of the objects to the bbox.
     """
     if isinstance(objs, dict):
-        return dict((k, crop_to_bbox(v, bbox)) for k, v in objs.items())
+        return {k: crop_to_bbox(v, bbox) for k, v in objs.items()}
 
     initial_type = type(objs)
     objs = to_list(objs)
@@ -561,7 +540,7 @@ def curve_to_edges(curve):
 
 
 def rect_to_edges(rect):
-    top, bottom, left, right = [dict(rect) for x in range(4)]
+    top, bottom, left, right = [dict(rect) for _ in range(4)]
     top.update(
         {
             "object_type": "rect_edge",
