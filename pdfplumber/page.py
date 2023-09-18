@@ -8,41 +8,37 @@ import re
 
 lt_pat = re.compile(r"^LT")
 
-DECIMAL_ATTRS = set(
-    [
-        "adv",
-        "height",
-        "linewidth",
-        "pts",
-        "size",
-        "srcsize",
-        "width",
-        "x0",
-        "x1",
-        "y0",
-        "y1",
-    ]
-)
+DECIMAL_ATTRS = {
+    "adv",
+    "height",
+    "linewidth",
+    "pts",
+    "size",
+    "srcsize",
+    "width",
+    "x0",
+    "x1",
+    "y0",
+    "y1",
+}
 
-ALL_ATTRS = DECIMAL_ATTRS | set(
-    [
-        "bits",
-        "upright",
-        "font",
-        "fontname",
-        "name",
-        "text",
-        "imagemask",
-        "colorspace",
-        "evenodd",
-        "fill",
-        "non_stroking_color",
-        "path",
-        "stream",
-        "stroke",
-        "stroking_color",
-    ]
-)
+ALL_ATTRS = DECIMAL_ATTRS | {
+    "bits",
+    "upright",
+    "font",
+    "fontname",
+    "name",
+    "text",
+    "imagemask",
+    "colorspace",
+    "evenodd",
+    "fill",
+    "non_stroking_color",
+    "path",
+    "stream",
+    "stroke",
+    "stroking_color",
+}
 
 
 class Page(Container):
@@ -170,10 +166,7 @@ class Page(Container):
             k, v = item
             if k in ALL_ATTRS:
                 res = resolve_all(v)
-                if k in DECIMAL_ATTRS:
-                    return (k, d(res))
-                else:
-                    return (k, res)
+                return (k, d(res)) if k in DECIMAL_ATTRS else (k, res)
             else:
                 return None
 
@@ -237,11 +230,11 @@ class Page(Container):
     def extract_tables(self, table_settings={}):
         tables = self.find_tables(table_settings)
 
-        extract_kwargs = dict(
-            (k, table_settings["text_" + k])
+        extract_kwargs = {
+            k: table_settings[f"text_{k}"]
             for k in ["x_tolerance", "y_tolerance"]
-            if "text_" + k in table_settings
-        )
+            if f"text_{k}" in table_settings
+        }
 
         return [table.extract(**extract_kwargs) for table in tables]
 
@@ -284,7 +277,7 @@ class Page(Container):
         and positioning (within `tolerance`) as other characters on the page.
         """
         p = FilteredPage(self, True)
-        p._objects = dict((kind, objs) for kind, objs in self.objects.items())
+        p._objects = dict(self.objects.items())
         p._objects["char"] = utils.dedupe_chars(self.chars, **kwargs)
         return p
 

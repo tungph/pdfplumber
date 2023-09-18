@@ -256,12 +256,7 @@ class PageImage(object):
         self.draw_rects(words, stroke=stroke, fill=fill, stroke_width=stroke_width)
         return self
 
-    def outline_chars(
-        self,
-        stroke=(255, 0, 0, 255),
-        fill=(255, 0, 0, int(255 / 4)),
-        stroke_width=DEFAULT_STROKE_WIDTH,
-    ):
+    def outline_chars(self, stroke=(255, 0, 0, 255), fill=(255, 0, 0, 255 // 4), stroke_width=DEFAULT_STROKE_WIDTH):
 
         self.draw_rects(
             self.page.chars, stroke=stroke, fill=fill, stroke_width=stroke_width

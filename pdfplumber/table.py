@@ -16,8 +16,7 @@ def snap_edges(edges, tolerance=DEFAULT_SNAP_TOLERANCE):
     v, h = [list(filter(lambda x: x["orientation"] == o, edges)) for o in ("v", "h")]
 
     snap = utils.snap_objects
-    snapped = snap(v, "x0", tolerance) + snap(h, "top", tolerance)
-    return snapped
+    return snap(v, "x0", tolerance) + snap(h, "top", tolerance)
 
 
 def join_edge_group(edges, orientation, tolerance=DEFAULT_JOIN_TOLERANCE):
@@ -54,10 +53,7 @@ def merge_edges(edges, snap_tolerance, join_tolerance):
     """
 
     def get_group(edge):
-        if edge["orientation"] == "h":
-            return ("h", edge["top"])
-        else:
-            return ("v", edge["x0"])
+        return ("h", edge["top"]) if edge["orientation"] == "h" else ("v", edge["x0"])
 
     if snap_tolerance > 0:
         edges = snap_edges(edges, snap_tolerance)
@@ -80,12 +76,12 @@ def words_to_edges_h(words, word_threshold=DEFAULT_MIN_WORDS_HORIZONTAL):
     by_top = utils.cluster_objects(words, "top", 1)
     large_clusters = filter(lambda x: len(x) >= word_threshold, by_top)
     rects = list(map(utils.objects_to_rect, large_clusters))
-    if len(rects) == 0:
+    if not rects:
         return []
     min_x0 = min(map(itemgetter("x0"), rects))
     max_x1 = max(map(itemgetter("x1"), rects))
     max_bottom = max(map(itemgetter("bottom"), rects))
-    edges = [
+    return [
         {
             "x0": min_x0,
             "x1": max_x1,
@@ -105,8 +101,6 @@ def words_to_edges_h(words, word_threshold=DEFAULT_MIN_WORDS_HORIZONTAL):
             "orientation": "h",
         }
     ]
-
-    return edges
 
 
 def words_to_edges_v(words, word_threshold=DEFAULT_MIN_WORDS_VERTICAL):
@@ -130,15 +124,11 @@ def words_to_edges_v(words, word_threshold=DEFAULT_MIN_WORDS_VERTICAL):
     # Iterate through those bboxes, condensing overlapping bboxes
     condensed_bboxes = []
     for bbox in bboxes:
-        overlap = False
-        for c in condensed_bboxes:
-            if utils.get_bbox_overlap(bbox, c):
-                overlap = True
-                break
+        overlap = any(utils.get_bbox_overlap(bbox, c) for c in condensed_bboxes)
         if not overlap:
             condensed_bboxes.append(bbox)
 
-    if len(condensed_bboxes) == 0:
+    if not condensed_bboxes:
         return []
 
     condensed_rects = map(utils.bbox_to_rect, condensed_bboxes)
@@ -148,8 +138,7 @@ def words_to_edges_v(words, word_threshold=DEFAULT_MIN_WORDS_VERTICAL):
     min_top = min(map(itemgetter("top"), sorted_rects))
     max_bottom = max(map(itemgetter("bottom"), sorted_rects))
 
-    # Describe all the left-hand edges of each text cluster
-    edges = [
+    return [
         {
             "x0": b["x0"],
             "x1": b["x0"],
@@ -169,8 +158,6 @@ def words_to_edges_v(words, word_threshold=DEFAULT_MIN_WORDS_VERTICAL):
             "orientation": "v",
         }
     ]
-
-    return edges
 
 
 def edges_to_intersections(edges, x_tolerance=1, y_tolerance=1):
@@ -353,7 +340,7 @@ class Table(object):
         xs = list(sorted(set(map(itemgetter(0), self.cells))))
         rows = []
         for y, row_cells in itertools.groupby(_sorted, itemgetter(1)):
-            xdict = dict((cell[0], cell) for cell in row_cells)
+            xdict = {cell[0]: cell for cell in row_cells}
             row = Row([xdict.get(x) for x in xs])
             rows.append(row)
         return rows
@@ -439,7 +426,7 @@ class TableFinder(object):
                 raise ValueError(f"Unrecognized table setting: '{k}'")
         self.page = page
         self.settings = dict(DEFAULT_TABLE_SETTINGS)
-        self.settings.update(settings)
+        self.settings |= settings
         for var, fallback in [
             ("text_x_tolerance", "text_tolerance"),
             ("text_y_tolerance", "text_tolerance"),
@@ -447,7 +434,7 @@ class TableFinder(object):
             ("intersection_y_tolerance", "intersection_tolerance"),
         ]:
             if self.settings[var] is None:
-                self.settings.update({var: self.settings[fallback]})
+                self.settings[var] = self.settings[fallback]
         self.edges = self.get_edges()
         self.intersections = edges_to_intersections(
             self.edges,
@@ -460,13 +447,13 @@ class TableFinder(object):
     def get_edges(self):
         settings = self.settings
         for name in ["vertical", "horizontal"]:
-            strategy = settings[name + "_strategy"]
+            strategy = settings[f"{name}_strategy"]
             if strategy not in TABLE_STRATEGIES:
                 raise ValueError(
                     f'{name}_strategy must be one of {{{",".join(TABLE_STRATEGIES)}}}'
                 )
             if strategy == "explicit":
-                if len(settings["explicit_" + name + "_lines"]) < 2:
+                if len(settings[f"explicit_{name}_lines"]) < 2:
                     raise ValueError(
                         f"If {strategy}_strategy == 'explicit', explicit_{name}_lines "
                         f"must be specified as a list/tuple of two or more "
@@ -486,9 +473,9 @@ class TableFinder(object):
         v_explicit = []
         for desc in settings["explicit_vertical_lines"]:
             if isinstance(desc, dict):
-                for e in utils.obj_to_edges(desc):
-                    if e["orientation"] == "v":
-                        v_explicit.append(e)
+                v_explicit.extend(
+                    e for e in utils.obj_to_edges(desc) if e["orientation"] == "v"
+                )
             else:
                 v_explicit.append(
                     {
@@ -501,7 +488,10 @@ class TableFinder(object):
                     }
                 )
 
-        if v_strat == "lines":
+        if v_strat == "explicit":
+            v_base = []
+
+        elif v_strat == "lines":
             v_base = utils.filter_edges(self.page.edges, "v")
         elif v_strat == "lines_strict":
             v_base = utils.filter_edges(self.page.edges, "v", edge_type="line")
@@ -509,17 +499,14 @@ class TableFinder(object):
             v_base = words_to_edges_v(
                 words, word_threshold=settings["min_words_vertical"]
             )
-        elif v_strat == "explicit":
-            v_base = []
-
         v = v_base + v_explicit
 
         h_explicit = []
         for desc in settings["explicit_horizontal_lines"]:
             if isinstance(desc, dict):
-                for e in utils.obj_to_edges(desc):
-                    if e["orientation"] == "h":
-                        h_explicit.append(e)
+                h_explicit.extend(
+                    e for e in utils.obj_to_edges(desc) if e["orientation"] == "h"
+                )
             else:
                 h_explicit.append(
                     {
@@ -532,7 +519,10 @@ class TableFinder(object):
                     }
                 )
 
-        if h_strat == "lines":
+        if h_strat == "explicit":
+            h_base = []
+
+        elif h_strat == "lines":
             h_base = utils.filter_edges(self.page.edges, "h")
         elif h_strat == "lines_strict":
             h_base = utils.filter_edges(self.page.edges, "h", edge_type="line")
@@ -540,9 +530,6 @@ class TableFinder(object):
             h_base = words_to_edges_h(
                 words, word_threshold=settings["min_words_horizontal"]
             )
-        elif h_strat == "explicit":
-            h_base = []
-
         h = h_base + h_explicit
 
         edges = list(v) + list(h)

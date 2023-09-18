@@ -42,14 +42,14 @@ COLUMNS = [
 
 class Test(unittest.TestCase):
     @classmethod
-    def setup_class(self):
+    def setup_class(cls):
         path = os.path.join(HERE, "pdfs/nics-background-checks-2015-11.pdf")
-        self.pdf = pdfplumber.open(path)
-        self.PDF_WIDTH = self.pdf.pages[0].width
+        cls.pdf = pdfplumber.open(path)
+        cls.PDF_WIDTH = cls.pdf.pages[0].width
 
     @classmethod
-    def teardown_class(self):
-        self.pdf.close()
+    def teardown_class(cls):
+        cls.pdf.close()
 
     def test_edges(self):
         assert len(self.pdf.vertical_edges) == 700
@@ -69,12 +69,10 @@ class Test(unittest.TestCase):
         def parse_value(k, x):
             if k == 0:
                 return x
-            if x in (None, ""):
-                return None
-            return int(x.replace(",", ""))
+            return None if x in (None, "") else int(x.replace(",", ""))
 
         def parse_row(row):
-            return dict((COLUMNS[i], parse_value(i, v)) for i, v in enumerate(row))
+            return {COLUMNS[i]: parse_value(i, v) for i, v in enumerate(row)}
 
         parsed_table = [parse_row(row) for row in table]
 

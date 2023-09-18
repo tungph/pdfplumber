@@ -20,13 +20,13 @@ def run(cmd):
 
 class Test(unittest.TestCase):
     @classmethod
-    def setup_class(self):
-        self.path = os.path.join(HERE, "pdfs/pdffill-demo.pdf")
-        self.pdf = pdfplumber.open(self.path, pages=[1, 2, 5])
+    def setup_class(cls):
+        cls.path = os.path.join(HERE, "pdfs/pdffill-demo.pdf")
+        cls.pdf = pdfplumber.open(cls.path, pages=[1, 2, 5])
 
     @classmethod
-    def teardown_class(self):
-        self.pdf.close()
+    def teardown_class(cls):
+        cls.pdf.close()
 
     def test_json(self):
         c = json.loads(self.pdf.to_json())

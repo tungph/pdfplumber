@@ -13,13 +13,13 @@ HERE = os.path.abspath(os.path.dirname(__file__))
 
 class Test(unittest.TestCase):
     @classmethod
-    def setup_class(self):
+    def setup_class(cls):
         path = os.path.join(HERE, "pdfs/nics-background-checks-2015-11.pdf")
-        self.pdf = pdfplumber.open(path)
+        cls.pdf = pdfplumber.open(path)
 
     @classmethod
-    def teardown_class(self):
-        self.pdf.close()
+    def teardown_class(cls):
+        cls.pdf.close()
 
     def test_metadata(self):
         metadata = self.pdf.metadata
